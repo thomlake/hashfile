@@ -30,3 +30,18 @@
 		(is (= (:occupied (get-record (:word test-record))) true))
 		(is (= (:occupied (get-record "hello")) false)))
 )
+
+(deftest oflow-test
+	(with-open [file (RandomAccessFile. OFLOW-FNAME "rw")]
+	(let [
+		rec1 (new-record "this" 1.0 false false)
+		rec2 (new-record "is" 2.0 false false)
+		rec3 (new-record "a" 3.0 false false)
+		rec4 (new-record "test" 4.0 false false)]
+		(write-a-record file rec1)
+		(write-a-record file rec2)
+		(write-a-record file rec3)
+		(write-a-record file rec4)
+		(.seek file 0)
+		(is (= (:word rec3) (:word (linear-file-search file (:word rec3)))))))
+)

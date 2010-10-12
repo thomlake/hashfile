@@ -42,6 +42,11 @@
 	{:word word :value value}
 )
 
+(defn new-record
+	[word value collision occupied]
+	{:occupied occupied :collision collision :word (str-pad-right MAX-WORD-LEN word " ") :value value}	
+)
+
 (defn empty-record
 	[]
 	{:occupied false :collision false :word (str-pad-right MAX-WORD-LEN "-" "-") :value 0.0}
@@ -94,8 +99,8 @@
 		(int -1)
 		(do (let [record (read-a-record file)]
 			(if (= (:word record) word)
-				record
-				(recur file word)		)))) 
+				(new-return-record (:word record) (:value record))
+				(recur file word))))) 
 )
 
 (defn handle-returned-record
