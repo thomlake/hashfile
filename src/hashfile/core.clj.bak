@@ -1,0 +1,133 @@
+(ns hashfile.core
+	(:import [java.io File RandomAccessFile])
+	(:gen-class)
+)
+
+(declare put-record hash-loc at-loc ord-char-at write-a-record read-a-record str-pad-right)
+
+;parameters
+(def HASH-FNAME "hash.bin")
+(def OFLOW-FNAME "oflow.bin")
+(def TABLE-SIZE 2000)
+(def MAX-WORD-LEN 20)
+(def INT-SIZE 4)
+(def BOOL-SIZE 1)
+(def FLOAT-SIZE 4)
+;(def RECORD-SIZE (+ INT-SIZE MAX-WORD-LEN FLOAT-SIZE INT-SIZE))
+(def RECORD-SIZE (+ 1 MAX-WORD-LEN FLOAT-SIZE 1))
+
+;parameter setting
+(defn set-table-size
+	[size]
+	(def TABLE-SIZE size)
+)
+(defn set-record-size
+	[size]
+	(def  RECORD-SIZE size)
+)
+(defn set-hash-fname
+	[name]
+	(def HASH-FNAME name)
+)
+(defn set-oflow-fname
+	[name]
+	(def OFLOW-FNAME name)
+)
+
+;helpers
+(defn ord-char-at
+	[word i]
+	(int (.charAt word i))
+)
+
+(defn str-pad-right
+	[num word pad] 
+	(if (> num (.length word)) 
+		(recur num (str word pad) pad)
+	;else	
+		word
+	)
+)
+
+;hashing
+(defn hash-loc
+	[word i total]
+	(if (< i (count word))
+		(recur word (inc i) (rem (* 33 (+ 1 total (ord-char-at word i))) TABLE-SIZE))
+		(rem total TABLE-SIZE))
+)
+
+(defn at-loc
+	[word]
+	(* RECORD-SIZE (hash-loc word 0 0))
+)
+
+(defn read-twenty-chars
+	[file s ctr]
+	(if (< ctr 19) 
+		(recur file (str s (.readChar file)) (inc ctr))
+		(str s (.readChar file)))
+)
+
+(defn write-a-record
+	[file data]
+	(.writeBoolean file (:occupied data))
+	(.writeChars file (:word data))
+	(.writeFloat file (:value data))
+	(.writeBoolean file (:collision data))
+)
+
+(defn read-a-record
+	[file]
+	;{:occupied (.readBoolean file) :word (.readUTF file) :value (.readFloat file) :collision (.readBoolean file)}
+	{:occupied (.readBoolean file) :word (read-twenty-chars file "" 0) :value (.readFloat file) :collision (.readBoolean file)}
+)
+
+;file handling
+(defn put-record
+	[data]
+	(let [new-word (str-pad-right MAX-WORD-LEN (:word data) " ")]
+	(with-open [file (RandomAccessFile. HASH-FNAME "rw")]
+		(.seek  file (at-loc new-word))
+		(write-a-record file (assoc data :word new-word)) ;works, but no check for record
+		;(if (not (:occupied (read-a-record file)))
+		;	(do (.seek file (at-loc new-word)) (write-a-record file (assoc data :word new-word)))
+		;	(do (with-open [overflow (RandomAccessFile. OFLOW-FNAME "rw")]
+		;			(.seek overflow (.length overflow))
+		;			(write-a-record overflow (assoc data :word new-word)))))
+	))
+)
+
+(defn get-record
+	[word]
+	(with-open [file (RandomAccessFile. HASH-FNAME "r")]
+		(.seek file (at-loc (str-pad-right MAX-WORD-LEN word " ")))
+		(read-a-record file))
+)
+
+(defn write-n
+	[file record n ctr]
+	(write-a-record file record)
+	(if (< ctr (- n 1))
+		(recur file record n (inc ctr)))
+)
+
+(defn zero-hash-file 
+	[]
+	(let [blank-map {:occupied false :word (str-pad-right 20 " " " ") :value 0.0 :collision false}]
+	(with-open [file (RandomAccessFile. HASH-FNAME "rw")]
+		(.seek file 0)
+		(write-n file blank-map TABLE-SIZE 0)))
+)
+
+(defn init-files 
+	[]
+	(.delete (File. HASH-FNAME))
+	(.delete (File. OFLOW-FNAME))
+	(zero-hash-file)
+)
+
+
+
+
+
