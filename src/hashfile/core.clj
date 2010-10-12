@@ -37,6 +37,11 @@
 		(str word))
 )
 
+(defn new-return-record
+	[word value]
+	{:word word :value value}
+)
+
 (defn empty-record
 	[]
 	{:occupied false :collision false :word (str-pad-right MAX-WORD-LEN "-" "-") :value 0.0}
@@ -81,6 +86,25 @@
 (defn read-a-record
 	[file]
 	{:occupied (.readBoolean file) :collision (.readBoolean file) :word (read-n-chars file "" MAX-WORD-LEN 0) :value (.readFloat file)}
+)
+
+(defn linear-file-search
+	[file word]
+	(if (>= (.getFilePointer file) (.length file))
+		(int -1)
+		(do (let [record (read-a-record file)]
+			(if (= (:word record) word)
+				record
+				(recur file word)		)))) 
+)
+
+(defn handle-returned-record
+	[record word]
+	(if (= (:word record) word)
+		(new-return-record (:word record) (:value record))
+		(if (not (:collision record))
+			(int -1) ;word not found error
+			(linear-file-search (RandomAccessFile. OFLOW-FNAME "rw") word)))
 )
 
 (defn put-record
